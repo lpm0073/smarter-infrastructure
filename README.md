@@ -100,6 +100,7 @@ MYSQL_ROOT_PASSWORD=SET-ME-PLEASE
 PLATFORM_SUBDOMAIN=platform
 COST_CODE=SET-ME-PLEASE
 UNIQUE_ID=SET-ME-PLEASE
+UPTIME_ALERT_EMAIL=ops@example.com
 
 DOCKER_USERNAME=docker_username
 DOCKER_PAT=docker_personal_access_token
@@ -161,6 +162,15 @@ necessary, to ensure global uniqueness throughout the AWS account. Best
 practice is to use an alpha-numeric value that carries some meaning for the
 installation. For example, a datestamp like 'eval' or 'live'. This value
 becomes a global tag that is added to all AWS resources.
+
+`UPTIME_ALERT_EMAIL`: (Optional) Defaults to empty. Each environment (except
+local) gets Route 53 health checks of its platform and api hosts, and
+CloudWatch alarms in us-east-1 that notify an SNS topic when a host goes down
+and when it recovers (see [uptime.tf](./aws/terraform/smarter/uptime.tf)).
+This address is subscribed to every environment's topic. AWS emails it a
+confirmation link per environment, and sends no alerts until it is clicked.
+When empty, the alarms still exist and show in the CloudWatch console, but
+nobody is notified.
 
 `DOCKER_USERNAME` & `DOCKER_PAT`: (Required). The kubernetes stack stores these
 in AWS Secrets Manager for the AWS Elastic Container Registry pull-through cache,

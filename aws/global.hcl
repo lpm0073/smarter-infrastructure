@@ -25,6 +25,9 @@ locals {
     docker_pat                 = get_env("DOCKER_PAT", "")
     unique_id                  = get_env("UNIQUE_ID", "123456789012")
     cost_code                  = get_env("COST_CODE", "smarter")
+    # Receives every environment's uptime alarms (aws/terraform/smarter/uptime.tf).
+    # Empty: the alarms exist, but nobody is emailed.
+    uptime_alert_email         = get_env("UPTIME_ALERT_EMAIL", "")
 
     platform_region            = "ca"
     platform_name              = "smarter"
