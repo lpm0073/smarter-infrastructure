@@ -74,6 +74,12 @@ variable "install_metrics_server" {
   default     = false
 }
 
+variable "uptime_alert_email" {
+  description = "email address that receives this environment's uptime alarms (uptime.tf). Empty: the alarms are created, but nobody is notified"
+  type        = string
+  default     = ""
+}
+
 variable "cluster_name" {
   description = "name of the existing EKS cluster"
   type        = string
