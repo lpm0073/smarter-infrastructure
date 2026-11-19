@@ -357,52 +357,6 @@ module "eks" {
         },
       )
     }
-    wordpress = {
-      capacity_type             = "SPOT"
-      enable_monitoring         = false
-      cluster_enabled_log_types = []
-      min_size                  = 2
-      max_size                  = 5
-      desired_size              = 3
-      instance_types            = var.eks_node_group_instance_types
-      subnet_ids                = [var.private_subnets[0]]
-
-      node_repair_config = {
-        enabled = true
-        update_config = {
-          max_unavailable_percentage = 33
-        }
-      }
-
-      block_device_mappings = {
-        xvda = {
-          device_name = "/dev/xvda"
-          ebs = {
-            volume_type           = "gp3"
-            volume_size           = 20
-            delete_on_termination = true
-          }
-        }
-      }
-
-      # Cluster add-ons such as Traefik also run on these nodes. Without this
-      # policy a node can pull images already in the ECR pull-through cache, but
-      # not the first pull of a new one, which ECR reports as "not found".
-      # Attaching a policy to the node role doesn't replace the node group.
-      iam_role_additional_policies = {
-        ECRPullThroughCache = aws_iam_policy.ecr_pull_through_cache.arn
-      }
-
-      labels = {
-        node-group = "wordpress"
-      }
-      tags = merge(
-        local.tags,
-        {
-          Name = "eks-${var.shared_resource_identifier}-wordpress"
-        },
-      )
-    }
   }
 
 }
@@ -471,6 +425,10 @@ resource "helm_release" "cluster_autoscaler" {
 
 #==============================================================================
 # AWS ECR Pull-Through Cache Policy
+#
+# Node groups managed outside this repository look this policy up by its name
+# and attach it to their node roles. Renaming or replacing it fails while
+# their roles still have it attached (IAM won't delete an attached policy).
 #==============================================================================
 resource "aws_iam_policy" "ecr_pull_through_cache" {
   name        = "${var.cluster_name}-ecr-pull-through-cache"
