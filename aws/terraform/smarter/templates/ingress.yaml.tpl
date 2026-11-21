@@ -6,7 +6,7 @@
 #
 # Purpose:
 #   - Route external traffic to the Smarter app and Api.
-#   - Apply CORS and HTTPS redirect middlewares via Traefik.
+#   - Apply CORS, HTTPS redirect and HSTS middlewares via Traefik.
 #   - Enable TLS termination using cert-manager.
 #
 # Template Variables:
@@ -33,7 +33,7 @@ metadata:
     kubernetes.io/tls-acme: "true"
     cert-manager.io/cluster-issuer: ${cluster_issuer}
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.middlewares: ${environment_namespace}-cors@kubernetescrd,${environment_namespace}-https-redirect@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: ${environment_namespace}-cors@kubernetescrd,${environment_namespace}-https-redirect@kubernetescrd,${environment_namespace}-hsts@kubernetescrd
   labels:
     app.kubernetes.io/application-group: ${ app_name }
     app.kubernetes.io/name: ${ app_name }

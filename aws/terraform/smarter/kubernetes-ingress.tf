@@ -21,6 +21,11 @@
 # Service that doesn't exist, and the environment answers 404.
 locals {
   api_service_name = "${local.platform_name}-api"
+
+  # The max-age of the Strict-Transport-Security header, in seconds. One hour to start: a browser keeps
+  # the promise for this long whatever the server does later, so a mistake costs an hour at most. Raise it
+  # (a year is 31536000) once HTTPS has been reliable. See templates/traefik-middleware-hsts.yaml.tpl.
+  hsts_seconds = 3600
 }
 
 resource "kubernetes_manifest" "platform_ingress" {
@@ -41,9 +46,12 @@ resource "kubernetes_manifest" "platform_ingress" {
     force_conflicts = true
   }
 
+  # The ingress names the hsts middleware. Traefik drops a router whose middleware doesn't exist, so the
+  # host would answer 404 until it does.
   depends_on = [
     kubernetes_namespace_v1.smarter,
-    aws_route53_zone.environment_platform_domain
+    aws_route53_zone.environment_platform_domain,
+    kubernetes_manifest.traefik-middleware-hsts
   ]
 }
 
@@ -63,8 +71,10 @@ resource "kubernetes_manifest" "api_ingress" {
     force_conflicts = true
   }
 
+  # See platform_ingress.
   depends_on = [
-    aws_route53_zone.environment_api_domain
+    aws_route53_zone.environment_api_domain,
+    kubernetes_manifest.traefik-middleware-hsts
   ]
 }
 
@@ -96,6 +106,17 @@ resource "kubernetes_manifest" "traefik-middleware-http-redirect" {
   ]
 }
 
+resource "kubernetes_manifest" "traefik-middleware-hsts" {
+  manifest = yamldecode(templatefile("${path.module}/templates/traefik-middleware-hsts.yaml.tpl", {
+    app_name              = local.platform_name
+    environment_namespace = local.environment_namespace
+    sts_seconds           = local.hsts_seconds
+  }))
+
+  depends_on = [
+    kubernetes_namespace_v1.smarter
+  ]
+}
 
 resource "kubernetes_manifest" "traefik-service-sessions" {
   manifest = yamldecode(templatefile("${path.module}/templates/traefik-service-sessions.yaml.tpl", {
