@@ -10,9 +10,11 @@
 #     or an old http:// link to HTTPS itself, before anything is sent,
 #     so an attacker on the network can't intercept that first plain
 #     HTTP request.
-#   - Traefik terminates TLS, so it adds the header here. Django's
-#     SECURE_HSTS_SECONDS would not: behind the proxy, Django sees every
-#     request as plain HTTP, and sends the header only on HTTPS ones.
+#   - Traefik terminates TLS, so it adds the header here, in one place
+#     for every host, the deployed chatbots and custom domains included.
+#     Django's SECURE_HSTS_SECONDS stays unset. Django learns the scheme
+#     only from the X-Forwarded-Proto header that Traefik sets
+#     (SECURE_PROXY_SSL_HEADER in smarter's settings/base_aws.py).
 #
 # Caution:
 #   - A browser keeps the promise for the whole max-age, whatever the
