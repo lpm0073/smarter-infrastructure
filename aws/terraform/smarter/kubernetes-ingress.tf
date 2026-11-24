@@ -16,7 +16,7 @@
 #
 # More specifically, the 'service_name' of this template needs to match the name of the Service that the
 # Helm chart creates for the api: <appName>-api, e.g. smarter-api. The chart renamed it from <appName>, and
-# runs both Services while app.legacyName.enabled is true, so that this module moves to the new name first,
+# runs both Services while api.legacyName.enabled is true, so that this module moves to the new name first,
 # in an environment that already runs a release with both. Applied before that, the ingresses name a
 # Service that doesn't exist, and the environment answers 404.
 locals {
