@@ -145,6 +145,12 @@ variable "eks_node_group_instance_types" {
   default     = ["t3.large", "m5.large"]
 }
 
+variable "eks_wordpress_node_group_instance_types" {
+  description = "Instance types for the SPOT WordPress node group. Changing the list, or its order, replaces the node group."
+  type        = list(string)
+  default     = ["t3.large", "t3a.large", "m5a.large", "m6a.large", "m5.large", "m4.large"]
+}
+
 variable "cluster_admin_users" {
   description = "List of IAM user ARNs to be added as cluster admins in the aws-auth configmap and KMS key owner list (if KMS encryption is enabled for EKS secrets)."
   type        = list(string)

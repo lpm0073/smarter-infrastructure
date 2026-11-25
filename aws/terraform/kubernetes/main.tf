@@ -357,6 +357,74 @@ module "eks" {
         },
       )
     }
+
+    # WordPress runs on its own nodes in this cluster: its pods require
+    # node-group=wordpress. This group was created here, moved to a separate
+    # repository (lpm0073/aws-eks-wordpress) and is now back. Its arguments match
+    # what runs, so adopting it changes nothing. A change to anything that ends
+    # up in the launch template (tags, block devices, user data) creates a new
+    # launch template version, and EKS then replaces every node in the group,
+    # one at a time.
+    wordpress = {
+      # SPOT costs much less than ON_DEMAND, but AWS can reclaim a node with two
+      # minutes' notice. Changing capacity_type replaces the node group.
+      capacity_type     = "SPOT"
+      enable_monitoring = false
+      # The cluster autoscaler may move the node count between min_size and
+      # max_size. desired_size applies only when the group is created: the
+      # module ignores later changes to it, so a plan doesn't undo the
+      # autoscaler. The autoscaler grows this group last (see
+      # config/cluster-autoscaler.yaml.tpl).
+      min_size     = 2
+      max_size     = 3
+      desired_size = 3
+      # Separate from the smarter group's list, so that changing stack.hcl's
+      # node types for Smarter doesn't replace the WordPress nodes too.
+      instance_types = var.eks_wordpress_node_group_instance_types
+      # One subnet, in the region's "a" zone: the group has always run there.
+      # Changing subnets replaces the node group.
+      subnet_ids = [var.private_subnets[0]]
+
+      # EKS replaces a node that fails its health checks.
+      node_repair_config = {
+        enabled = true
+      }
+
+      # How many nodes a rolling update (a new AMI or launch template version)
+      # may take out at once. 33% is also the module's default.
+      update_config = {
+        max_unavailable_percentage = 33
+      }
+
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_type           = "gp3"
+            volume_size           = 20
+            delete_on_termination = true
+          }
+        }
+      }
+
+      # Cluster add-ons such as Traefik also run on these nodes. Without this
+      # policy a node can pull images already in the ECR pull-through cache, but
+      # not the first pull of a new one, which ECR reports as "not found".
+      # Attaching a policy to the node role doesn't replace the node group.
+      iam_role_additional_policies = {
+        ECRPullThroughCache = aws_iam_policy.ecr_pull_through_cache.arn
+      }
+
+      labels = {
+        node-group = "wordpress"
+      }
+      tags = merge(
+        local.tags,
+        {
+          Name = "eks-${var.shared_resource_identifier}-wordpress"
+        },
+      )
+    }
   }
 
 }
@@ -429,9 +497,10 @@ resource "helm_release" "cluster_autoscaler" {
 #==============================================================================
 # AWS ECR Pull-Through Cache Policy
 #
-# Node groups managed outside this repository look this policy up by its name
-# and attach it to their node roles. Renaming or replacing it fails while
-# their roles still have it attached (IAM won't delete an attached policy).
+# Attached to the smarter and wordpress node roles here, and looked up by name
+# by each environment's stateful node group (aws/terraform/smarter). Renaming
+# or replacing it fails while a role still has it attached (IAM won't delete
+# an attached policy).
 #==============================================================================
 resource "aws_iam_policy" "ecr_pull_through_cache" {
   name        = "${var.cluster_name}-ecr-pull-through-cache"

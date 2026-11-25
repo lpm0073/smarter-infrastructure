@@ -17,8 +17,8 @@ extraArgs:
   # Which node group to grow when a pending pod would fit in more than one.
   # The cluster autoscaler ignores a pod's preferred node affinity, so with
   # the default expander a Smarter pod (which only prefers node-group=smarter)
-  # could grow any node group it fits in, e.g. the WordPress group, which is
-  # managed outside this repository. "priority" grows the highest-priority
+  # could grow any node group it fits in, e.g. the WordPress group.
+  # "priority" grows the highest-priority
   # group in expanderPriorities below; least-waste breaks ties among groups
   # of equal priority.
   expander: priority,least-waste

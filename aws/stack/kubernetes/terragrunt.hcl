@@ -89,6 +89,7 @@ inputs = {
   eks_create_kms_key         = local.eks_create_kms_key
   tags                       = local.tags
   eks_node_group_instance_types = local.eks_node_group_instance_types
+  eks_wordpress_node_group_instance_types = local.stack_vars.locals.eks_wordpress_node_group_instance_types
 
   eks_node_group_min_size     = local.eks_node_group_min_size
   eks_node_group_max_size     = local.eks_node_group_max_size

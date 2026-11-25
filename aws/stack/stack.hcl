@@ -50,4 +50,16 @@ locals {
     "m8g.large"
   ]
   eks_node_group_instance_types = local.amd64_instance_types
+
+  # The WordPress node group. AMD64 only: WordPress images aren't
+  # necessarily built for ARM64. The same list, in the same order, that the
+  # group runs today; changing it replaces the WordPress nodes.
+  eks_wordpress_node_group_instance_types = [
+    "t3.large",
+    "t3a.large",
+    "m5a.large",
+    "m6a.large",
+    "m5.large",
+    "m4.large",
+  ]
 }
