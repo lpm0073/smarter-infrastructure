@@ -415,6 +415,9 @@ resource "helm_release" "cluster_autoscaler" {
   name       = "cluster-autoscaler"
   repository = "https://kubernetes.github.io/autoscaler"
   chart      = "cluster-autoscaler"
+  # The release that runs today. Unpinned, the next apply would also upgrade
+  # the chart to whatever was published that day.
+  version = "9.59.0"
 
   namespace = "kube-system"
   values = [
