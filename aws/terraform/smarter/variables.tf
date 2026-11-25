@@ -74,6 +74,29 @@ variable "install_metrics_server" {
   default     = false
 }
 
+variable "stateful_node_group_enabled" {
+  description = "create this environment's stateful node group: one ON_DEMAND node, tainted and labeled smarter.sh/node-pool=stateful, for MariaDB, Redis and Loki (node-group-stateful.tf)"
+  type        = bool
+  default     = false
+}
+
+variable "stateful_node_group_availability_zone" {
+  description = "availability zone of the stateful node group, e.g. ca-central-1b. It must be the zone of the EBS volumes of the services that run on it. Changing it replaces the node group"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.stateful_node_group_enabled || var.stateful_node_group_availability_zone != ""
+    error_message = "stateful_node_group_availability_zone is required when stateful_node_group_enabled is true."
+  }
+}
+
+variable "stateful_node_group_instance_types" {
+  description = "instance types of the stateful node group. Changing them replaces the node group"
+  type        = list(string)
+  default     = ["t3.medium"]
+}
+
 variable "uptime_alert_email" {
   description = "email address that receives this environment's uptime alarms (uptime.tf). Empty: the alarms are created, but nobody is notified"
   type        = string

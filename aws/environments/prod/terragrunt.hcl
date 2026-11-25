@@ -37,5 +37,11 @@ inputs = merge(
 
     # metrics-server is cluster-wide; prod installs it for every environment
     install_metrics_server = true
+
+    # One ON_DEMAND node for MariaDB, Redis and Loki, which spot reclaims kept
+    # taking down (node-group-stateful.tf). Prod's MariaDB volume is in the "b"
+    # zone; Redis's and Loki's are recreated there.
+    stateful_node_group_enabled           = true
+    stateful_node_group_availability_zone = "${local.global_vars.locals.aws_region}b"
   }
 )
