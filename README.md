@@ -167,8 +167,12 @@ becomes a global tag that is added to all AWS resources.
 local) gets Route 53 health checks of its platform and api hosts, and
 CloudWatch alarms in us-east-1 that notify an SNS topic when a host goes down
 and when it recovers (see [uptime.tf](./aws/terraform/smarter/uptime.tf)).
-This address is subscribed to every environment's topic. AWS emails it a
-confirmation link per environment, and sends no alerts until it is clicked.
+An environment with a stateful node group also gets CPU, memory and disk
+alarms on that node, which notify a second SNS topic in the environment's own
+region (see
+[node-group-stateful-alarms.tf](./aws/terraform/smarter/node-group-stateful-alarms.tf)).
+This address is subscribed to every one of these topics. AWS emails it a
+confirmation link per topic, and sends no alerts until it is clicked.
 When empty, the alarms still exist and show in the CloudWatch console, but
 nobody is notified.
 

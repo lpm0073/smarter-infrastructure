@@ -100,6 +100,39 @@ data "aws_iam_policy" "ecr_pull_through_cache" {
   name  = "${var.cluster_name}-ecr-pull-through-cache"
 }
 
+# Lets the CloudWatch agent on the node (templates/stateful-node-cloudwatch-agent.sh)
+# publish its metrics, and nothing else. AWS's CloudWatchAgentServerPolicy
+# would also grant CloudWatch Logs and SSM Parameter Store, which this agent
+# doesn't use. PutMetricData can't be scoped to a resource, only to a
+# namespace. DescribeTags is how the agent learns the node's Auto Scaling group
+# name; it can't be scoped at all.
+data "aws_iam_policy_document" "stateful_node_cloudwatch_agent" {
+  count = var.stateful_node_group_enabled ? 1 : 0
+
+  statement {
+    actions   = ["cloudwatch:PutMetricData"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "cloudwatch:namespace"
+      values   = ["CWAgent"]
+    }
+  }
+  statement {
+    actions   = ["ec2:DescribeTags"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "stateful_node_cloudwatch_agent" {
+  count = var.stateful_node_group_enabled ? 1 : 0
+
+  name        = "${local.environment_namespace}-stateful-node-cloudwatch-agent"
+  description = "Lets the CloudWatch agent on the ${local.environment_namespace} stateful node publish memory and disk metrics"
+  policy      = data.aws_iam_policy_document.stateful_node_cloudwatch_agent[0].json
+  tags        = var.tags
+}
+
 module "stateful_node_group" {
   count  = var.stateful_node_group_enabled ? 1 : 0
   source = "terraform-aws-modules/eks/aws//modules/eks-managed-node-group"
@@ -166,7 +199,19 @@ module "stateful_node_group" {
   # as "not found".
   iam_role_additional_policies = {
     ECRPullThroughCache = data.aws_iam_policy.ecr_pull_through_cache[0].arn
+    CloudWatchAgent     = aws_iam_policy.stateful_node_cloudwatch_agent[0].arn
   }
+
+  # Installs the CloudWatch agent, for the memory and disk alarms in
+  # node-group-stateful-alarms.tf. It runs before nodeadm joins the node to
+  # the cluster. A change to this script is a new launch template version,
+  # which replaces the node (see "Upgrades proceed on their own" above).
+  cloudinit_pre_nodeadm = [
+    {
+      content_type = "text/x-shellscript; charset=\"us-ascii\""
+      content      = file("${path.module}/templates/stateful-node-cloudwatch-agent.sh")
+    }
+  ]
 
   labels = {
     (local.stateful_node_pool.key) = local.stateful_node_pool.value
