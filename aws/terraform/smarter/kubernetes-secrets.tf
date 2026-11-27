@@ -11,6 +11,7 @@
 #             - Admin credentials for the Smarter app
 #             - Django secret key for the Smarter app
 #             - Redis password for the Smarter app
+#             - Redis ACL users' passwords (the tool worker's)
 #------------------------------------------------------------------------------
 
 #--------------------------------------------------------------
@@ -150,6 +151,35 @@ resource "kubernetes_secret_v1" "redis" {
 
   data = {
     REDIS_PASSWORD = random_password.redis.result
+  }
+
+  depends_on = [kubernetes_namespace_v1.smarter]
+}
+
+# The passwords of the environment's Redis ACL users, other than the default user: today one,
+# tools, the tool worker's (smarter ADR-030, rule 8). The Smarter Helm chart's Redis subchart reads
+# this Secret (auth.acl.userSecret), whose keys must be the usernames, and so does the tool
+# worker's environment (smarter.toolsEnv). The user's ACL lets it touch only its own queue, its
+# results and a few cache keys, so code that the tool worker runs, an Extension's included, can't
+# push a task to the infrastructure worker or read the sessions, as the default user could.
+#
+# Letters and digits only, for the same reason as the Redis password above.
+resource "random_password" "redis_tools" {
+  length  = 32
+  special = false
+  keepers = {
+    version = "1"
+  }
+}
+
+resource "kubernetes_secret_v1" "redis_users" {
+  metadata {
+    name      = "smarter-redis-users"
+    namespace = local.environment_namespace
+  }
+
+  data = {
+    tools = random_password.redis_tools.result
   }
 
   depends_on = [kubernetes_namespace_v1.smarter]
