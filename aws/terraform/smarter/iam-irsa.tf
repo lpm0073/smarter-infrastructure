@@ -2,9 +2,9 @@
 # usage:      Smarter app infrastructure - the IAM roles of this environment's
 #             pods, with IAM Roles for Service Accounts (IRSA).
 #
-# The Smarter Helm chart runs the app, the Celery workers, beat and the init
-# job as the ServiceAccount "smarter", and the MariaDB backup CronJob as
-# "smarter-backup". The deploy annotates each with its role's ARN
+# The Smarter Helm chart runs each kind of pod (the app, the Celery workers,
+# beat, the init and migrate jobs) as its own ServiceAccount, smarter-<pod>,
+# and the MariaDB backup CronJob as "smarter-backup". The deploy annotates each with its role's ARN
 # (serviceAccount.awsRoleArn, databaseScheduledBackup.awsRoleArn), and the EKS
 # pod identity webhook hands the pods short-lived credentials for it. No AWS
 # access key is stored in the pods.
@@ -40,8 +40,29 @@ locals {
 }
 
 #------------------------------------------------------------------------------
-# The platform's pods: ServiceAccount "smarter"
+# The platform's pods: one ServiceAccount per kind of pod, smarter-<pod>
+#
+# Each kind of pod runs as its own ServiceAccount (smarter ADR-038, phase 3,
+# smarter#1084), and every one of them has this role, until each gets its own
+# (phase 3, step 4, issue #18). "smarter", which every pod ran as before, stays
+# trusted until every environment runs a chart with the new ServiceAccounts:
+# the pods that a rollout hasn't replaced yet still run as it.
 #------------------------------------------------------------------------------
+locals {
+  smarter_pod_service_accounts = [
+    "smarter",
+    "smarter-api",
+    "smarter-worker",
+    "smarter-worker-infrastructure",
+    "smarter-beat",
+    "smarter-job-init",
+    "smarter-job-migrate",
+  ]
+  smarter_irsa_subjects = [
+    for name in local.smarter_pod_service_accounts : "system:serviceaccount:${local.environment_namespace}:${name}"
+  ]
+}
+
 data "aws_iam_policy_document" "smarter_pods" {
 
   # DNS: smarter.apps.infrastructure.providers.aws.helpers.route53
@@ -198,7 +219,7 @@ module "smarter_irsa" {
   role_name                     = "${local.environment_namespace}-smarter-irsa"
   provider_url                  = local.oidc_provider_url
   role_policy_arns              = [aws_iam_policy.smarter_pods.arn]
-  oidc_fully_qualified_subjects = ["system:serviceaccount:${local.environment_namespace}:smarter"]
+  oidc_fully_qualified_subjects = local.smarter_irsa_subjects
   tags                          = local.tags
 }
 
